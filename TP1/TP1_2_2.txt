@@ -1,0 +1,2 @@
+Signal 28 non ignoré : Window changed ! 
+Signal 28 non ignoré : Window changed ! 

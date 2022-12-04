@@ -1,0 +1,8 @@
+Signal 2 : Interrupt ! 
+Signal 12 : User defined signal 2 ! 
+Signal 15 : Terminated ! 
+Signal 12 : User defined signal 2 ! 
+Signal 12 : User defined signal 2 ! 
+Signal 2 : Interrupt ! 
+J'ai reçu le signal !
+J'ai reçu le signal !
