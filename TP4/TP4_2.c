@@ -43,6 +43,7 @@ sem_t mutex;
 
 void *Thread_affichage(void *arguments)
 {
+
     printf("Thread affichage\n");
     int nbarg = 1;
     glutInit(&nbarg, (char **)arguments);        // fonction d’initialisation
@@ -106,6 +107,18 @@ void display()
     // glVertex3f(10, 10, 0.0);      // point 1
     // glVertex3f(100, 100, 0.0);    // point 2
 
+    for (int i = 0; i < nbBalls; i++)
+    {
+        if (data[i].vivant == 1)
+        {
+            glColor3f(data[i].colors[0], data[i].colors[1], data[i].colors[2]);
+            drawCircle(data[i].x, data[i].y, data[i].r, 100);
+        }
+    }
+
+    glEnd();
+    glutSwapBuffers(); // affiche à l’écran le buffer dans lequel nous avons dessiné
+
     for (int j = 0; j < nbBalls; j++)
     {
         int ballsAlive = nbBalls;
@@ -124,27 +137,16 @@ void display()
 
         if (ballsAlive == 0)
         {
+            
             printf("All balls are dead, exiting program\n");
             pthread_exit(0);
         }
     }
-
-    for (int i = 0; i < nbBalls; i++)
-    {
-        if (data[i].vivant == 1)
-        {
-            glColor3f(data[i].colors[0], data[i].colors[1], data[i].colors[2]);
-            drawCircle(data[i].x, data[i].y, data[i].r, 100);
-        }
-    }
-
-    glEnd();
-    glutSwapBuffers(); // affiche à l’écran le buffer dans lequel nous avons dessiné
 }
 
 void majCoordBalle(void *numBall)
 {
-    int i = numBall;
+    int i = *((int *) numBall);
 
     while (1)
     {
@@ -183,6 +185,7 @@ void majCoordBalle(void *numBall)
             if (data[i].cptRebonds == data[i].nbRebonds)
             {
                 data[i].vivant = 0;
+                free(numBall);
                 pthread_exit(0);
             }
 
@@ -247,7 +250,10 @@ int main(int argc, char *argv[])
 
     for (i = 0; i < nbBalls; i++)
     {
-        if (pthread_create(&balles[i], NULL, majCoordBalle, i) == 0)
+        int *arg = malloc(sizeof(*arg));
+        *arg = i;
+
+        if (pthread_create(&balles[i], NULL, majCoordBalle, arg) == 0)
         {
             printf("Ball %d created\n", i);
         }
