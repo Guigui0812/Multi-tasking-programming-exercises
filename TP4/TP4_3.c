@@ -21,11 +21,13 @@
 #include <GL/freeglut_ext.h>
 #include <math.h>
 
-// gcc -o TP4_2 TP4_2.c -lglut -lGL -lm -pthread -lpthread  && ./TP4_2
+// gcc -o TP4_3 TP4_3.c -lglut -lGL -lm -pthread -lpthread  && ./TP4_3
 
 void affiche();
 void display();
 void *Thread_affichage(void *arg);
+
+sem_t vide, plein;
 
 // Ajout de la structure question 2
 typedef struct s_threadData
@@ -36,11 +38,11 @@ typedef struct s_threadData
 } ThreadData;
 
 ThreadData data[10];
-int nbBalls;
+pthread_t balles[10];
+int nbBalls, tete, queue;
 
 void *Thread_affichage(void *arguments)
 {
-
     printf("Thread affichage\n");
     int nbarg = 1;
     glutInit(&nbarg, (char **)arguments);        // fonction d’initialisation
@@ -115,35 +117,11 @@ void display()
 
     glEnd();
     glutSwapBuffers(); // affiche à l’écran le buffer dans lequel nous avons dessiné
-
-    for (int j = 0; j < nbBalls; j++)
-    {
-        int ballsAlive = nbBalls;
-
-        for (int j = 0; j < nbBalls; j++)
-        {
-            if (data[j].vivant == 1)
-            {
-                ballsAlive++;
-            }
-            else
-            {
-                ballsAlive--;
-            }
-        }
-
-        if (ballsAlive == 0)
-        {
-            
-            printf("All balls are dead, exiting program\n");
-            pthread_exit(0);
-        }
-    }
 }
 
-void majCoordBalle(void *numBall)
+void *majCoordBalle(void *numBall)
 {
-    int i = *((int *) numBall);
+    int i = *((int *)numBall);
 
     while (1)
     {
@@ -179,10 +157,7 @@ void majCoordBalle(void *numBall)
                 data[i].cptRebonds++;
             }
 
-            if (data[i].cptRebonds == data[i].nbRebonds)
-            {
-                data[i].vivant = 0;
-                free(numBall);
+            if (data[i].vivant == 0){
                 pthread_exit(0);
             }
 
@@ -191,45 +166,96 @@ void majCoordBalle(void *numBall)
             data[i].y += data[i].directionY * data[i].vitesse;
         }
 
-        usleep(10000);
+        usleep(0000);
+        
+    }
+
+    
+}
+
+void createBall(int tete)
+{
+    int i = tete;
+
+    data[i].r = rand() % 70 + 30;
+    data[i].vitesse = (rand() % 4) + 1;
+
+    if (rand() % 2 == 0)
+    {
+        data[i].directionX = -1;
+    }
+    else
+    {
+        data[i].directionX = 1;
+    }
+
+    if (rand() % 2 == 0)
+    {
+        data[i].directionY = -1;
+    }
+    else
+    {
+        data[i].directionY = 1;
+    }
+
+    data[i].vivant = 1;
+    data[i].x = rand() % (450 - 50 + 1) + 50;
+    data[i].y = rand() % (450 - 50 + 1) + 50;
+
+    data[i].colors[0] = (GLfloat)((float)rand() / (float)(RAND_MAX)) * 1.0;
+    data[i].colors[1] = (GLfloat)((float)rand() / (float)(RAND_MAX)) * 1.0;
+    data[i].colors[2] = (GLfloat)((float)rand() / (float)(RAND_MAX)) * 1.0;
+}
+
+void *consumerThread()
+{
+
+    while (1)
+    {
+        sem_wait(&plein);
+        // retirer la data
+
+        // Generate a random between 50000 and 80000
+        int random = rand() % (800000 - 500000 + 1) + 500000;
+
+        usleep(random);
+
+        printf("Balle %d détruite\n", queue);
+
+        data[queue].vivant = 0;
+
+        queue++;
+        if (queue >= nbBalls)
+        {
+            queue = 0;
+        }
+
+        sem_post(&vide);
+        //pthread_join(balles[queue], NULL);
     }
 }
 
-void createBall()
+void *productorThread()
 {
-    for (int i = 0; i < nbBalls; i++)
+
+    while (1)
     {
-        data[i].r = rand() % 70 + 30;
-        data[i].vitesse = (rand() % 4) + 1;
+        sem_wait(&vide);
 
-        if (rand() % 2 == 0)
+        createBall(tete);
+        int *arg = malloc(sizeof(*arg));
+        *arg = tete;
+        if (pthread_create(&balles[tete], NULL, majCoordBalle, arg) == 0)
         {
-            data[i].directionX = -1;
-        }
-        else
-        {
-            data[i].directionX = 1;
-        }
-
-        if (rand() % 2 == 0)
-        {
-            data[i].directionY = -1;
-        }
-        else
-        {
-            data[i].directionY = 1;
+            printf("Ball %d created\n", tete);
+            tete++;
+            if (tete >= nbBalls)
+            {
+                tete = 0;
+            }
         }
 
-        data[i].cptRebonds = 0;
-        data[i].vivant = 1;
-
-        data[i].nbRebonds = (rand() % 20) + 1;
-        data[i].x = rand() % (450 - 50 + 1) + 50;
-        data[i].y = rand() % (450 - 50 + 1) + 50;
-
-        data[i].colors[0] = (GLfloat)((float)rand() / (float)(RAND_MAX)) * 1.0;
-        data[i].colors[1] = (GLfloat)((float)rand() / (float)(RAND_MAX)) * 1.0;
-        data[i].colors[2] = (GLfloat)((float)rand() / (float)(RAND_MAX)) * 1.0;
+        sem_post(&plein);
     }
 }
 
@@ -238,33 +264,27 @@ int main(int argc, char *argv[])
     srand(time(NULL));
 
     // nbBalls is an integer in 1 and 10
-    nbBalls = (rand() % 10) + 1;
-    pthread_t thread_affichage;
-    pthread_t balles[10];
+    nbBalls = 10;
+    tete == 0;
+    queue = 0;
+    pthread_t thread_affichage, threadConsommateur, threadProducteur;
     int i = 0;
-    
-    createBall();
+    sem_init(&vide, 0, nbBalls);
+    sem_init(&plein, 0, 0);
 
-    for (i = 0; i < nbBalls; i++)
+    if (pthread_create(&threadConsommateur, NULL, consumerThread, NULL) == 0)
     {
-        int *arg = malloc(sizeof(*arg));
-        *arg = i;
-
-        if (pthread_create(&balles[i], NULL, majCoordBalle, arg) == 0)
-        {
-            printf("Ball %d created\n", i);
-        }
     }
-
+    if (pthread_create(&threadProducteur, NULL, productorThread, NULL) == 0)
+    {
+    }
     if (pthread_create(&thread_affichage, NULL, Thread_affichage, argv) == 0)
     {
         printf("Thread affichage ok !\n");
     }
 
-    for (int i = 0; i < nbBalls; i++)
-    {
-        pthread_join(balles[i], NULL);
-    }
+    pthread_join(threadConsommateur, NULL);
+    pthread_join(threadProducteur, NULL);
     pthread_join(thread_affichage, NULL);
 
     return 0;
