@@ -27,7 +27,7 @@ void affiche();
 void display();
 void *Thread_affichage(void *arg);
 
-sem_t vide, plein;
+sem_t vide, plein, mutex;
 
 // Ajout de la structure question 2
 typedef struct s_threadData
@@ -106,6 +106,8 @@ void display()
     // glVertex3f(10, 10, 0.0);      // point 1
     // glVertex3f(100, 100, 0.0);    // point 2
 
+    sem_wait(&mutex);
+
     for (int i = 0; i < nbBalls; i++)
     {
         if (data[i].vivant == 1)
@@ -114,6 +116,8 @@ void display()
             drawCircle(data[i].x, data[i].y, data[i].r, 100);
         }
     }
+
+    sem_post(&mutex);
 
     glEnd();
     glutSwapBuffers(); // affiche à l’écran le buffer dans lequel nous avons dessiné
@@ -157,20 +161,21 @@ void *majCoordBalle(void *numBall)
                 data[i].cptRebonds++;
             }
 
+            /*
             if (data[i].vivant == 0){
                 pthread_exit(0);
             }
+            */
 
             // we update the position of the ball
             data[i].x += data[i].directionX * data[i].vitesse;
             data[i].y += data[i].directionY * data[i].vitesse;
+
         }
 
-        usleep(0000);
+        usleep(20000);
         
     }
-
-    
 }
 
 void createBall(int tete)
@@ -223,14 +228,21 @@ void *consumerThread()
         printf("Balle %d détruite\n", queue);
 
         data[queue].vivant = 0;
-
         queue++;
+        
         if (queue >= nbBalls)
         {
             queue = 0;
         }
 
         sem_post(&vide);
+
+        for (int i = 0; i < nbBalls; i++){
+            if (data[queue].vivant == 0){
+                pthread_join(balles[queue], NULL);
+            }
+        }
+
         //pthread_join(balles[queue], NULL);
     }
 }
@@ -271,6 +283,7 @@ int main(int argc, char *argv[])
     int i = 0;
     sem_init(&vide, 0, nbBalls);
     sem_init(&plein, 0, 0);
+    sem_init(&mutex, 0, 1);
 
     if (pthread_create(&threadConsommateur, NULL, consumerThread, NULL) == 0)
     {

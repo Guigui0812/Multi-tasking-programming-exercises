@@ -179,7 +179,7 @@ void majCoordBalle(void *numBall)
                 data[i].cptRebonds++;
             }
 
-            if (data[i].cptRebonds == data[i].nbRebonds)
+            if (data[i].cptRebonds >= data[i].nbRebonds)
             {
                 data[i].vivant = 0;
                 free(numBall);
