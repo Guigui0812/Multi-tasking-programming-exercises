@@ -2,6 +2,8 @@
 
 4th year C programming module at ESIEE Amiens engineering school
 
+*Code can only be used on a Linux machine
+
 <h2> TP1: Processes and signals </h2>
 
 Topics covered: 
