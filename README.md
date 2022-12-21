@@ -2,6 +2,10 @@
 
 <h2> TP1: Processes and signals </h2>
 
+Topics covered: 
+- Process creation
+- Sending system signals
+- Killing processes
 
 <h2> TP2: Processes and tubes </h2>
 
